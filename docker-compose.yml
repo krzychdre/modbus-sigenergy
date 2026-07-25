@@ -7,7 +7,4 @@ services:
       - /etc/sigenergy-modbus-mqtt:/etc/sigenergy-modbus-mqtt:ro
       # Persist the daily energy accumulator across restarts (writable).
       # Must match energy_integration.state_file's directory in config.yaml.
-      - sigenergy-state:/var/lib/sigenergy-modbus-mqtt
-
-volumes:
-  sigenergy-state:
+      - ./vol/sigenergy-state:/var/lib/sigenergy-modbus-mqtt
