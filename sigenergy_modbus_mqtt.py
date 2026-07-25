@@ -252,11 +252,13 @@ class EnergyAccumulator:
         self.max_gap_s = float(max_gap_s)
         self.last_ts: float | None = None
         self.date: str | None = None
-        for f in self.FIELDS:
-            setattr(self, f, 0.0)
+        self.totals: dict[str, float] = dict.fromkeys(self.FIELDS, 0.0)
 
     def _local_date(self) -> str:
         return datetime.now(self.tz).date().isoformat()
+
+    def _reset_totals(self) -> None:
+        self.totals = dict.fromkeys(self.FIELDS, 0.0)
 
     def load(self) -> None:
         try:
@@ -271,59 +273,66 @@ class EnergyAccumulator:
         if self.date != today:
             # stored day has passed -> start the new day at zero
             self.date = today
-            for f in self.FIELDS:
-                setattr(self, f, 0.0)
+            self._reset_totals()
             LOG.info("energy state dated %s != today %s; reset accumulators", data.get("date"), today)
             return
         for f in self.FIELDS:
             try:
-                setattr(self, f, float(data.get(f, 0.0)))
+                self.totals[f] = float(data.get(f, 0.0))
             except (TypeError, ValueError):
-                setattr(self, f, 0.0)
-        LOG.info("energy state loaded for %s: %s", self.date,
-                 {f: round(getattr(self, f), 3) for f in self.FIELDS})
+                self.totals[f] = 0.0
+        LOG.info("energy state loaded for %s: %s", self.date, self.snapshot())
 
     def update(self, pv_kw: float, grid_kw: float, ess_kw: float) -> None:
+        self._start_new_day_if_needed()
+        hours = self._sample_hours()
+        if hours is None:
+            return
+        # grid: >0 import, <0 export (per doc 30005)
+        self._integrate_signed("grid_import_kwh", "grid_export_kwh", grid_kw, hours)
+        # ess: >0 charging (house->battery), <0 discharging (battery->house) (per doc 30037)
+        self._integrate_signed("battery_charge_kwh", "battery_discharge_kwh", ess_kw, hours)
+        # pv: >=0 generation
+        self._integrate_positive("pv_kwh", pv_kw, hours)
+        # home load = pv + grid_import_signed - ess_charge_signed (clamp >= 0)
+        self._integrate_positive("home_load_kwh", pv_kw + grid_kw - ess_kw, hours)
+
+    def _start_new_day_if_needed(self) -> None:
         today = self._local_date()
-        if self.date != today:
-            if self.date is not None:
-                LOG.info("local date %s -> %s; resetting daily energy accumulators", self.date, today)
-            self.date = today
-            for f in self.FIELDS:
-                setattr(self, f, 0.0)
+        if self.date == today:
+            return
+        if self.date is not None:
+            LOG.info("local date %s -> %s; resetting daily energy accumulators", self.date, today)
+        self.date = today
+        self._reset_totals()
+
+    def _sample_hours(self) -> float | None:
         now = time.monotonic()
         if self.last_ts is None:
             self.last_ts = now
-            return
+            return None
         dt = now - self.last_ts
         self.last_ts = now
         if dt <= 0:
-            return
+            return None
         if dt > self.max_gap_s:
             # gap too large (stalled loop or restart) -> unmeasured; do not backfill
             LOG.debug("skipping integration sample: dt=%.1fs exceeds max_gap_s=%.0f", dt, self.max_gap_s)
-            return
-        h = dt / 3600.0
-        # grid: >0 import, <0 export (per doc 30005)
-        if grid_kw > 0:
-            self.grid_import_kwh += grid_kw * h
-        elif grid_kw < 0:
-            self.grid_export_kwh += (-grid_kw) * h
-        # pv: >=0 generation
-        if pv_kw > 0:
-            self.pv_kwh += pv_kw * h
-        # ess: >0 charging (house->battery), <0 discharging (battery->house) (per doc 30037)
-        if ess_kw > 0:
-            self.battery_charge_kwh += ess_kw * h
-        elif ess_kw < 0:
-            self.battery_discharge_kwh += (-ess_kw) * h
-        # home load = pv + grid_import_signed - ess_charge_signed (clamp >= 0)
-        home = pv_kw + grid_kw - ess_kw
-        if home > 0:
-            self.home_load_kwh += home * h
+            return None
+        return dt / 3600.0
+
+    def _integrate_signed(self, positive: str, negative: str, value: float, hours: float) -> None:
+        if value > 0:
+            self.totals[positive] += value * hours
+        elif value < 0:
+            self.totals[negative] += -value * hours
+
+    def _integrate_positive(self, field: str, value: float, hours: float) -> None:
+        if value > 0:
+            self.totals[field] += value * hours
 
     def snapshot(self) -> dict[str, float]:
-        return {f: round(getattr(self, f), 3) for f in self.FIELDS}
+        return {f: round(self.totals[f], 3) for f in self.FIELDS}
 
     def persist(self) -> None:
         snap = self.snapshot()
@@ -366,24 +375,35 @@ class TierPoller:
 
     def refresh_due(self, now: float) -> None:
         for tier_name, tier in self.tiers.items():
-            interval = float(tier["interval_seconds"])
-            if self.tier_last[tier_name] and now - self.tier_last[tier_name] < interval:
-                continue
-            success = 0
-            for reg in tier.get("registers", []):
-                if reg.get("enabled", True) is False:
-                    continue
-                path = reg["path"]
-                try:
-                    put_path(self.cache, path, self.reader.read(reg))
-                    self.errors.pop(path, None)
-                    success += 1
-                except Exception as exc:
-                    self.errors[path] = str(exc)
-                    LOG.warning("%s: %s", path, exc)
-            self.tier_last[tier_name] = now
-            self.tier_updated[tier_name] = utc_now()
-            LOG.info("Refreshed %s tier: %d values", tier_name, success)
+            if self._is_due(tier_name, tier, now):
+                self._refresh_tier(tier_name, tier, now)
+
+    def _is_due(self, tier_name: str, tier: dict[str, Any], now: float) -> bool:
+        last = self.tier_last[tier_name]
+        if not last:
+            return True
+        return now - last >= float(tier["interval_seconds"])
+
+    def _refresh_tier(self, tier_name: str, tier: dict[str, Any], now: float) -> None:
+        success = sum(self._read_register(reg) for reg in self._enabled_registers(tier))
+        self.tier_last[tier_name] = now
+        self.tier_updated[tier_name] = utc_now()
+        LOG.info("Refreshed %s tier: %d values", tier_name, success)
+
+    @staticmethod
+    def _enabled_registers(tier: dict[str, Any]) -> list[dict[str, Any]]:
+        return [reg for reg in tier.get("registers", []) if reg.get("enabled", True) is not False]
+
+    def _read_register(self, reg: dict[str, Any]) -> bool:
+        path = reg["path"]
+        try:
+            put_path(self.cache, path, self.reader.read(reg))
+            self.errors.pop(path, None)
+            return True
+        except Exception as exc:
+            self.errors[path] = str(exc)
+            LOG.warning("%s: %s", path, exc)
+            return False
 
     def age_seconds(self, now: float) -> dict[str, Any]:
         return {
@@ -394,6 +414,27 @@ class TierPoller:
 
 # --- payload builders ---------------------------------------------------------
 
+def _base_payload(
+    mb: dict[str, Any],
+    started_at: str,
+    tier_updated: dict[str, Any],
+    cache: dict[str, Any],
+    *,
+    online: bool,
+) -> dict[str, Any]:
+    device = {"host": mb["host"], "port": int(mb.get("port", 502))}
+    if online:
+        device["inverter_unit_id"] = int(mb.get("inverter_unit_id", 1))
+    return {
+        "timestamp": utc_now(),
+        "online": online,
+        "device": device,
+        "started_at": started_at,
+        "updated_at": tier_updated,
+        "data": cache,
+    }
+
+
 def build_online_payload(
     mb: dict[str, Any],
     started_at: str,
@@ -402,20 +443,10 @@ def build_online_payload(
     cache: dict[str, Any],
     errors: dict[str, str],
 ) -> dict[str, Any]:
-    return {
-        "timestamp": utc_now(),
-        "online": True,
-        "device": {
-            "host": mb["host"],
-            "port": int(mb.get("port", 502)),
-            "inverter_unit_id": int(mb.get("inverter_unit_id", 1)),
-        },
-        "started_at": started_at,
-        "updated_at": tier_updated,
-        "age_seconds": age,
-        "data": cache,
-        "errors": errors,
-    }
+    payload = _base_payload(mb, started_at, tier_updated, cache, online=True)
+    payload["age_seconds"] = age
+    payload["errors"] = errors
+    return payload
 
 
 def build_offline_payload(
@@ -424,20 +455,11 @@ def build_offline_payload(
     tier_updated: dict[str, Any],
     cache: dict[str, Any],
 ) -> dict[str, Any]:
-    return {
-        "timestamp": utc_now(),
-        "online": False,
-        "device": {
-            "host": mb["host"],
-            "port": int(mb.get("port", 502)),
-        },
-        "started_at": started_at,
-        "errors": {
-            "connection": f"Cannot connect to Modbus TCP {mb['host']}:{mb.get('port', 502)}"
-        },
-        "updated_at": tier_updated,
-        "data": cache,
+    payload = _base_payload(mb, started_at, tier_updated, cache, online=False)
+    payload["errors"] = {
+        "connection": f"Cannot connect to Modbus TCP {mb['host']}:{mb.get('port', 502)}"
     }
+    return payload
 
 
 # --- energy integration step --------------------------------------------------
@@ -493,74 +515,82 @@ class Application:
         signal.signal(signal.SIGINT, handler)
         signal.signal(signal.SIGTERM, handler)
 
-    def run(self) -> int:
-        publisher = MqttPublisher(self.mc)
-        publisher.connect()
+    def _build_accumulator(self) -> EnergyAccumulator | None:
+        ei = self.cfg.get("energy_integration") or {}
+        if not ei.get("enabled"):
+            return None
+        accumulator = EnergyAccumulator(
+            state_file=ei.get("state_file", "/var/lib/sigenergy-modbus-mqtt/energy_daily.json"),
+            tz_name=ei.get("timezone", "Europe/Warsaw"),
+            max_gap_s=ei.get("max_sample_gap_seconds", 30),
+        )
+        accumulator.load()
+        return accumulator
 
-        modbus = ModbusTcpClient(
+    def run(self) -> int:
+        self.publisher = MqttPublisher(self.mc)
+        self.publisher.connect()
+        self.modbus = ModbusTcpClient(
             self.mb["host"],
             port=int(self.mb.get("port", 502)),
             timeout=float(self.mb.get("timeout_seconds", 3)),
         )
-        reader = RegisterReader(modbus, self.mb)
-        poller = TierPoller(self.tiers, reader)
-
-        ei = self.cfg.get("energy_integration") or {}
-        accumulator: EnergyAccumulator | None = None
-        if ei.get("enabled"):
-            accumulator = EnergyAccumulator(
-                state_file=ei.get("state_file", "/var/lib/sigenergy-modbus-mqtt/energy_daily.json"),
-                tz_name=ei.get("timezone", "Europe/Warsaw"),
-                max_gap_s=ei.get("max_sample_gap_seconds", 30),
-            )
-            accumulator.load()
-
+        self.reader = RegisterReader(self.modbus, self.mb)
+        self.poller = TierPoller(self.tiers, self.reader)
+        self.accumulator = self._build_accumulator()
         self._install_signal_handlers()
 
         try:
             while not self.stop_event.is_set():
                 cycle = time.monotonic()
-                try:
-                    if not modbus.connected and not modbus.connect():
-                        payload = build_offline_payload(
-                            self.mb, self.started_at, poller.tier_updated, poller.cache
-                        )
-                        publisher.publish(payload)
-                        LOG.error(payload["errors"]["connection"])
-                    else:
-                        now = time.monotonic()
-                        poller.refresh_due(now)
-                        age = poller.age_seconds(time.monotonic())
-                        payload = build_online_payload(
-                            self.mb, self.started_at, poller.tier_updated, age, poller.cache, poller.errors
-                        )
-                        if accumulator is not None:
-                            integrate_energy(poller.cache, accumulator)
-                        publisher.publish(payload)
-                        LOG.info(
-                            "Published consolidated snapshot to %s: %d errors",
-                            publisher.topic, len(poller.errors),
-                        )
-                except Exception as exc:
-                    # transient Modbus/MQTT failure: never kill the daemon; force a clean
-                    # Modbus reconnect next cycle (paho reconnects MQTT on its own)
-                    LOG.error("cycle failed (%s); resetting connections and retrying", exc)
-                    try:
-                        reader.reset()
-                    except Exception:
-                        pass
+                self._run_cycle()
                 if self.once:
                     break
                 time.sleep(max(0.1, self.fast_interval - (time.monotonic() - cycle)))
         finally:
-            if accumulator is not None:
-                try:
-                    accumulator.persist()
-                except Exception as exc:
-                    LOG.warning("final energy persist failed: %s", exc)
-            modbus.close()
-            publisher.close()
+            self._shutdown()
         return 0
+
+    def _run_cycle(self) -> None:
+        try:
+            if self.modbus.connected or self.modbus.connect():
+                self._poll_and_publish()
+            else:
+                self._publish_offline()
+        except Exception as exc:
+            # transient Modbus/MQTT failure: never kill the daemon; force a clean
+            # Modbus reconnect next cycle (paho reconnects MQTT on its own)
+            LOG.error("cycle failed (%s); resetting connections and retrying", exc)
+            self.reader.reset()
+
+    def _poll_and_publish(self) -> None:
+        self.poller.refresh_due(time.monotonic())
+        age = self.poller.age_seconds(time.monotonic())
+        payload = build_online_payload(
+            self.mb, self.started_at, self.poller.tier_updated, age,
+            self.poller.cache, self.poller.errors,
+        )
+        if self.accumulator is not None:
+            integrate_energy(self.poller.cache, self.accumulator)
+        self.publisher.publish(payload)
+        LOG.info(
+            "Published consolidated snapshot to %s: %d errors",
+            self.publisher.topic, len(self.poller.errors),
+        )
+
+    def _publish_offline(self) -> None:
+        payload = build_offline_payload(self.mb, self.started_at, self.poller.tier_updated, self.poller.cache)
+        self.publisher.publish(payload)
+        LOG.error(payload["errors"]["connection"])
+
+    def _shutdown(self) -> None:
+        if self.accumulator is not None:
+            try:
+                self.accumulator.persist()
+            except Exception as exc:
+                LOG.warning("final energy persist failed: %s", exc)
+        self.modbus.close()
+        self.publisher.close()
 
 
 def main() -> int:
