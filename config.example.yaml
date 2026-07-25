@@ -548,18 +548,22 @@ polling:
       count: 1
       type: S16
       gain: 10.0
+    # 30622/30623 are documented in V2.5 but many firmwares reject them
+    # (illegal data address). Set enabled: true once your unit answers them.
     - path: inverter.ess.max_cell_voltage_v       # NEW V2.5 (30622) - cell-balance monitoring
       unit_id: 1
       address: 30622
       count: 1
       type: U16
       gain: 1000.0
+      enabled: false
     - path: inverter.ess.min_cell_voltage_v       # NEW V2.5 (30623) - cell-balance monitoring
       unit_id: 1
       address: 30623
       count: 1
       type: U16
       gain: 1000.0
+      enabled: false
     - path: plant.ess.soh_pct                     # NEW V2.5 (30087) - capacity-weighted plant SOH
       unit_id: 247
       address: 30087
