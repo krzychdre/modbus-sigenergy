@@ -1,0 +1,201 @@
+scope,unit_id,name,key,address,quantity,access,data_type,gain,unit,comment
+plant_ro,247,System time,system_time,30000,2,RO,U32,1,s,Epoch seconds
+plant_ro,247,System time zone,system_time_zone,30002,1,RO,S16,1,min,Signed offset (V2.5 corrects V1.7 which said U16)
+plant_ro,247,EMS work mode,ems_work_mode,30003,1,RO,U16,,,0=max self-consumption; 1=Sigen AI; 2=TOU; 7=Remote EMS
+plant_ro,247,Grid sensor status,grid_sensor_status,30004,1,RO,U16,,,0=not connected; 1=connected
+plant_ro,247,Grid sensor active power,grid_sensor_active_power,30005,2,RO,S32,1000,kW,>0 import/buy from grid; <0 export/sell to grid
+plant_ro,247,Grid sensor reactive power,grid_sensor_reactive_power,30007,2,RO,S32,1000,kvar,
+plant_ro,247,On/off-grid status,on_off_grid_status,30009,1,RO,U16,,,0=on-grid; 1=off-grid automatic; 2=off-grid manual
+plant_ro,247,Maximum active power,maximum_active_power,30010,2,RO,U32,1000,kW,Base value for active-power adjustments
+plant_ro,247,Maximum apparent power,maximum_apparent_power,30012,2,RO,U32,1000,kVA,Base value for reactive-power adjustments
+plant_ro,247,Energy storage system SOC,energy_storage_system_soc,30014,1,RO,U16,10,%,
+plant_ro,247,Plant phase A active power,plant_phase_a_active_power,30015,2,RO,S32,1000,kW,
+plant_ro,247,Plant phase B active power,plant_phase_b_active_power,30017,2,RO,S32,1000,kW,
+plant_ro,247,Plant phase C active power,plant_phase_c_active_power,30019,2,RO,S32,1000,kW,
+plant_ro,247,Plant phase A reactive power,plant_phase_a_reactive_power,30021,2,RO,S32,1000,kvar,
+plant_ro,247,Plant phase B reactive power,plant_phase_b_reactive_power,30023,2,RO,S32,1000,kvar,
+plant_ro,247,Plant phase C reactive power,plant_phase_c_reactive_power,30025,2,RO,S32,1000,kvar,
+plant_ro,247,General alarm 1,general_alarm_1,30027,1,RO,U16,,,Appendix 2 bitmask
+plant_ro,247,General alarm 2,general_alarm_2,30028,1,RO,U16,,,Appendix 3 bitmask
+plant_ro,247,General alarm 3,general_alarm_3,30029,1,RO,U16,,,Appendix 4 bitmask
+plant_ro,247,General alarm 4,general_alarm_4,30030,1,RO,U16,,,Appendix 5 bitmask
+plant_ro,247,Plant active power,plant_active_power,30031,2,RO,S32,1000,kW,
+plant_ro,247,Plant reactive power,plant_reactive_power,30033,2,RO,S32,1000,kvar,
+plant_ro,247,Photovoltaic power,photovoltaic_power,30035,2,RO,S32,1000,kW,
+plant_ro,247,ESS power,ess_power,30037,2,RO,S32,1000,kW,<0 discharging; >0 charging
+plant_ro,247,Available maximum active power,available_maximum_active_power,30039,2,RO,U32,1000,kW,Feed to AC terminal
+plant_ro,247,Available minimum active power,available_minimum_active_power,30041,2,RO,U32,1000,kW,Absorb from AC terminal
+plant_ro,247,Available maximum reactive power,available_maximum_reactive_power,30043,2,RO,U32,1000,kvar,Feed to AC terminal
+plant_ro,247,Available minimum reactive power,available_minimum_reactive_power,30045,2,RO,U32,1000,kvar,Absorb from AC terminal
+plant_ro,247,Available maximum charging power,available_maximum_charging_power,30047,2,RO,U32,1000,kW,
+plant_ro,247,Available maximum discharging power,available_maximum_discharging_power,30049,2,RO,U32,1000,kW,
+plant_ro,247,Plant running state,plant_running_state,30051,1,RO,U16,,,0 standby; 1 running; 2 fault; 3 shutdown
+plant_ro,247,Grid sensor phase A active power,grid_sensor_phase_a_active_power,30052,2,RO,S32,1000,kW,>0 import; <0 export
+plant_ro,247,Grid sensor phase B active power,grid_sensor_phase_b_active_power,30054,2,RO,S32,1000,kW,>0 import; <0 export
+plant_ro,247,Grid sensor phase C active power,grid_sensor_phase_c_active_power,30056,2,RO,S32,1000,kW,>0 import; <0 export
+plant_ro,247,Grid sensor phase A reactive power,grid_sensor_phase_a_reactive_power,30058,2,RO,S32,1000,kvar,
+plant_ro,247,Grid sensor phase B reactive power,grid_sensor_phase_b_reactive_power,30060,2,RO,S32,1000,kvar,
+plant_ro,247,Grid sensor phase C reactive power,grid_sensor_phase_c_reactive_power,30062,2,RO,S32,1000,kvar,
+plant_ro,247,Available maximum charging capacity,available_maximum_charging_capacity,30064,2,RO,U32,100,kWh,
+plant_ro,247,Available maximum discharging capacity,available_maximum_discharging_capacity,30066,2,RO,U32,100,kWh,
+plant_ro,247,Rated ESS charging power,rated_ess_charging_power,30068,2,RO,U32,1000,kW,
+plant_ro,247,Rated ESS discharging power,rated_ess_discharging_power,30070,2,RO,U32,1000,kW,
+plant_ro,247,General alarm 5,general_alarm_5,30072,1,RO,U16,,,NEW V2.5 - Appendix 11 (DC charger alarm) bitmask
+plant_ro,247,ESS rated energy capacity,ess_rated_energy_capacity,30083,2,RO,U32,100,kWh,NEW V2.5 - total plant battery capacity
+plant_ro,247,ESS charge cut-off SOC,ess_charge_cutoff_soc,30085,1,RO,U16,10,%,NEW V2.5 - upper SOC limit
+plant_ro,247,ESS discharge cut-off SOC,ess_discharge_cutoff_soc,30086,1,RO,U16,10,%,NEW V2.5 - lower SOC limit / reserve
+plant_ro,247,ESS SOH,ess_soh,30087,1,RO,U16,10,%,NEW V2.5 - capacity-weighted plant state of health
+plant_ro_undocumented,247,Plant daily PV generation,plant_daily_pv_generation,30272,2,RO,U32,100,kWh,NOT IN V1.7 DOC - empirically discovered on firmware V100R001C10SPC116; matches app daily PV production
+plant_rw,247,Start/Stop,start_stop,40000,1,WO,U16,,,0 stop; 1 start
+plant_rw,247,Active power fixed adjustment target,active_power_fixed_adjustment_target,40001,2,RW,S32,1000,kW,
+plant_rw,247,Reactive power fixed adjustment target,reactive_power_fixed_adjustment_target,40003,2,RW,S32,1000,kvar,
+plant_rw,247,Active power percentage adjustment target,active_power_percentage_adjustment_target,40005,1,RW,S16,100,%,Range -100.00..100.00
+plant_rw,247,Q/S adjustment target,q_s_adjustment_target,40006,1,RW,S16,100,%,Range -60.00..60.00
+plant_rw,247,Power factor adjustment target,power_factor_adjustment_target,40007,1,RW,S16,1000,,"(-1,-0.8] or [0.8,1]"
+plant_rw,247,Phase A active power fixed target,phase_a_active_power_fixed_target,40008,2,RW,S32,1000,kW,Independent-phase output only
+plant_rw,247,Phase B active power fixed target,phase_b_active_power_fixed_target,40010,2,RW,S32,1000,kW,Independent-phase output only
+plant_rw,247,Phase C active power fixed target,phase_c_active_power_fixed_target,40012,2,RW,S32,1000,kW,Independent-phase output only
+plant_rw,247,Phase A reactive power fixed target,phase_a_reactive_power_fixed_target,40014,2,RW,S32,1000,kvar,Independent-phase output only
+plant_rw,247,Phase B reactive power fixed target,phase_b_reactive_power_fixed_target,40016,2,RW,S32,1000,kvar,Independent-phase output only
+plant_rw,247,Phase C reactive power fixed target,phase_c_reactive_power_fixed_target,40018,2,RW,S32,1000,kvar,Independent-phase output only
+plant_rw,247,Phase A active power percentage target,phase_a_active_power_percentage_target,40020,1,RW,S16,100,%,Independent-phase output only
+plant_rw,247,Phase B active power percentage target,phase_b_active_power_percentage_target,40021,1,RW,S16,100,%,Independent-phase output only
+plant_rw,247,Phase C active power percentage target,phase_c_active_power_percentage_target,40022,1,RW,S16,100,%,Independent-phase output only
+plant_rw,247,Phase A Q/S target,phase_a_q_s_target,40023,1,RW,S16,100,%,Independent-phase output only
+plant_rw,247,Phase B Q/S target,phase_b_q_s_target,40024,1,RW,S16,100,%,Independent-phase output only
+plant_rw,247,Phase C Q/S target,phase_c_q_s_target,40025,1,RW,S16,100,%,Independent-phase output only
+plant_rw,247,Reserved (was active power fixed upper limit),reserved_40026,40026,3,RW,,,,RESERVED in V2.5 - was active-power fixed/percentage upper limit in V1.7 (40026 qty2 + 40028 qty1)
+plant_rw,247,Remote EMS enable,remote_ems_enable,40029,1,RW,U16,,,0 disabled; 1 enabled
+plant_rw,247,Independent phase power control enable,independent_phase_power_control_enable,40030,1,RW,U16,,,0 disabled; 1 enabled
+plant_rw,247,Remote EMS control mode,remote_ems_control_mode,40031,1,RW,U16,,,See Appendix 6
+plant_rw,247,ESS maximum charging limit,ess_maximum_charging_limit,40032,2,RW,U32,1000,kW,Effective in modes 3 or 4
+plant_rw,247,ESS maximum discharging limit,ess_maximum_discharging_limit,40034,2,RW,U32,1000,kW,Effective in modes 5 or 6
+plant_rw,247,PV maximum power limit,pv_maximum_power_limit,40036,2,RW,U32,1000,kW,"Effective in modes 3,4,5,6"
+plant_rw,247,Grid Point maximum export limitation,grid_point_max_export_limit,40038,2,RW,U32,1000,kW,NEW V2.5 - grid sensor required; global
+plant_rw,247,Grid Point maximum import limitation,grid_point_max_import_limit,40040,2,RW,U32,1000,kW,NEW V2.5 - grid sensor required; global
+plant_rw,247,PCS maximum export limitation,pcs_max_export_limit,40042,2,RW,U32,1000,kW,NEW V2.5 - 0xFFFFFFFF disables; else global
+plant_rw,247,PCS maximum import limitation,pcs_max_import_limit,40044,2,RW,U32,1000,kW,NEW V2.5 - 0xFFFFFFFF disables; else global
+inverter_ro,1-246,Model type,model_type,30500,15,RO,STRING,,,
+inverter_ro,1-246,Serial number,serial_number,30515,10,RO,STRING,,,
+inverter_ro,1-246,Machine firmware version,machine_firmware_version,30525,15,RO,STRING,,,
+inverter_ro,1-246,Rated active power,rated_active_power,30540,2,RO,U32,1000,kW,
+inverter_ro,1-246,Maximum apparent power,maximum_apparent_power,30542,2,RO,U32,1000,kVA,
+inverter_ro,1-246,Maximum active power,maximum_active_power,30544,2,RO,U32,1000,kW,
+inverter_ro,1-246,Maximum absorption power,maximum_absorption_power,30546,2,RO,U32,1000,kW,
+inverter_ro,1-246,Rated battery capacity,rated_battery_capacity,30548,2,RO,U32,100,kWh,
+inverter_ro,1-246,ESS rated charge power,ess_rated_charge_power,30550,2,RO,U32,1000,kW,
+inverter_ro,1-246,ESS rated discharge power,ess_rated_discharge_power,30552,2,RO,U32,1000,kW,
+inverter_ro_legacy,1-246,Daily export energy,daily_export_energy,30554,2,RO,U32,100,kWh,RESERVED in V2.5 (30554 qty12). V1.7 register; measures inverter AC port NOT grid CT meter - unreliable for grid export
+inverter_ro_legacy,1-246,Accumulated export energy,accumulated_export_energy,30556,4,RO,U64,100,kWh,RESERVED in V2.5. V1.7 register; inverter AC port
+inverter_ro_legacy,1-246,Daily import energy,daily_import_energy,30560,2,RO,U32,100,kWh,RESERVED in V2.5. V1.7 register; inverter AC port
+inverter_ro_legacy,1-246,Accumulated import energy,accumulated_import_energy,30562,4,RO,U64,100,kWh,RESERVED in V2.5. V1.7 register; inverter AC port
+inverter_ro,1-246,Battery daily charge energy,battery_daily_charge_energy,30566,2,RO,U32,100,kWh,
+inverter_ro,1-246,Battery accumulated charge energy,battery_accumulated_charge_energy,30568,4,RO,U64,100,kWh,
+inverter_ro,1-246,Battery daily discharge energy,battery_daily_discharge_energy,30572,2,RO,U32,100,kWh,
+inverter_ro,1-246,Battery accumulated discharge energy,battery_accumulated_discharge_energy,30574,4,RO,U64,100,kWh,
+inverter_ro,1-246,Running state,running_state,30578,1,RO,U16,,,0 standby; 1 running; 2 fault; 3 shutdown
+inverter_ro,1-246,Maximum active power adjustment value,maximum_active_power_adjustment_value,30579,2,RO,S32,1000,kW,
+inverter_ro,1-246,Minimum active power adjustment value,minimum_active_power_adjustment_value,30581,2,RO,S32,1000,kW,
+inverter_ro,1-246,Maximum reactive power feed value,maximum_reactive_power_feed_value,30583,2,RO,U32,1000,kvar,
+inverter_ro,1-246,Maximum reactive power absorption value,maximum_reactive_power_absorption_value,30585,2,RO,U32,1000,kvar,
+inverter_ro,1-246,Active power,active_power,30587,2,RO,S32,1000,kW,
+inverter_ro,1-246,Reactive power,reactive_power,30589,2,RO,S32,1000,kvar,
+inverter_ro,1-246,ESS maximum battery charge power,ess_maximum_battery_charge_power,30591,2,RO,U32,1000,kW,
+inverter_ro,1-246,ESS maximum battery discharge power,ess_maximum_battery_discharge_power,30593,2,RO,U32,1000,kW,
+inverter_ro,1-246,ESS available battery charge energy,ess_available_battery_charge_energy,30595,2,RO,U32,100,kWh,
+inverter_ro,1-246,ESS available battery discharge energy,ess_available_battery_discharge_energy,30597,2,RO,U32,100,kWh,
+inverter_ro,1-246,ESS charge/discharge power,ess_charge_discharge_power,30599,2,RO,S32,1000,kW,<0 discharging; >0 charging
+inverter_ro,1-246,ESS battery SOC,ess_battery_soc,30601,1,RO,U16,10,%,
+inverter_ro,1-246,ESS battery SOH,ess_battery_soh,30602,1,RO,U16,10,%,
+inverter_ro,1-246,ESS average cell temperature,ess_average_cell_temperature,30603,1,RO,S16,10,°C,
+inverter_ro,1-246,ESS average cell voltage,ess_average_cell_voltage,30604,1,RO,U16,1000,V,
+inverter_ro,1-246,Alarm 1,alarm_1,30605,1,RO,U16,,,Appendix 2
+inverter_ro,1-246,Alarm 2,alarm_2,30606,1,RO,U16,,,Appendix 3
+inverter_ro,1-246,Alarm 3,alarm_3,30607,1,RO,U16,,,Appendix 4
+inverter_ro,1-246,Alarm 4,alarm_4,30608,1,RO,U16,,,Appendix 5
+inverter_ro,1-246,Alarm 5,alarm_5,30609,1,RO,U16,,,NEW V2.5 - Appendix 11 (DC charger alarm) bitmask
+inverter_ro,1-246,ESS max battery cluster temperature,ess_max_cluster_temperature,30620,1,RO,S16,10,°C,NEW V2.5 - hottest cell/cluster
+inverter_ro,1-246,ESS min battery cluster temperature,ess_min_cluster_temperature,30621,1,RO,S16,10,°C,NEW V2.5 - coldest cell/cluster
+inverter_ro,1-246,ESS max battery cell voltage,ess_max_cell_voltage,30622,1,RO,U16,1000,V,NEW V2.5 - highest cell voltage
+inverter_ro,1-246,ESS min battery cell voltage,ess_min_cell_voltage,30623,1,RO,U16,1000,V,NEW V2.5 - lowest cell voltage (cell-balance monitoring)
+inverter_ro,1-246,Rated grid voltage,rated_grid_voltage,31000,1,RO,U16,10,V,
+inverter_ro,1-246,Rated grid frequency,rated_grid_frequency,31001,1,RO,U16,100,Hz,
+inverter_ro,1-246,Grid frequency,grid_frequency,31002,1,RO,U16,100,Hz,
+inverter_ro,1-246,PCS internal temperature,pcs_internal_temperature,31003,1,RO,S16,10,°C,
+inverter_ro,1-246,Output type,output_type,31004,1,RO,U16,,,0 L/N; 1 L1/L2/L3; 2 L1/L2/L3/N; 3 L1/L2/N
+inverter_ro,1-246,A-B line voltage,a_b_line_voltage,31005,2,RO,U32,100,V,
+inverter_ro,1-246,B-C line voltage,b_c_line_voltage,31007,2,RO,U32,100,V,
+inverter_ro,1-246,C-A line voltage,c_a_line_voltage,31009,2,RO,U32,100,V,
+inverter_ro,1-246,Phase A voltage,phase_a_voltage,31011,2,RO,U32,100,V,
+inverter_ro,1-246,Phase B voltage,phase_b_voltage,31013,2,RO,U32,100,V,
+inverter_ro,1-246,Phase C voltage,phase_c_voltage,31015,2,RO,U32,100,V,
+inverter_ro,1-246,Phase A current,phase_a_current,31017,2,RO,S32,100,A,
+inverter_ro,1-246,Phase B current,phase_b_current,31019,2,RO,S32,100,A,
+inverter_ro,1-246,Phase C current,phase_c_current,31021,2,RO,S32,100,A,
+inverter_ro,1-246,Power factor,power_factor,31023,1,RO,U16,1000,,
+inverter_ro,1-246,PACK count,pack_count,31024,1,RO,U16,1,,
+inverter_ro,1-246,PV string count,pv_string_count,31025,1,RO,U16,1,,
+inverter_ro,1-246,MPPT count,mppt_count,31026,1,RO,U16,1,,
+inverter_ro,1-246,PV1 voltage,pv1_voltage,31027,1,RO,S16,10,V,
+inverter_ro,1-246,PV1 current,pv1_current,31028,1,RO,S16,100,A,
+inverter_ro,1-246,PV2 voltage,pv2_voltage,31029,1,RO,S16,10,V,
+inverter_ro,1-246,PV2 current,pv2_current,31030,1,RO,S16,100,A,
+inverter_ro,1-246,PV3 voltage,pv3_voltage,31031,1,RO,S16,10,V,
+inverter_ro,1-246,PV3 current,pv3_current,31032,1,RO,S16,100,A,
+inverter_ro,1-246,PV4 voltage,pv4_voltage,31033,1,RO,S16,10,V,
+inverter_ro,1-246,PV4 current,pv4_current,31034,1,RO,S16,100,A,
+inverter_ro,1-246,PV power,pv_power,31035,2,RO,S32,1000,kW,
+inverter_ro,1-246,Insulation resistance,insulation_resistance,31037,1,RO,U16,1000,MΩ,
+inverter_ro,1-246,Startup time,startup_time,31038,2,RO,U32,1,s,Epoch seconds
+inverter_ro,1-246,Shutdown time,shutdown_time,31040,2,RO,U32,1,s,Epoch seconds
+inverter_ro,1-246,PV5 voltage,pv5_voltage,31042,1,RO,S16,10,V,NEW V2.5 - only on models with PV count > 4
+inverter_ro,1-246,PV5 current,pv5_current,31043,1,RO,S16,100,A,NEW V2.5
+inverter_ro,1-246,PV6 voltage,pv6_voltage,31044,1,RO,S16,10,V,NEW V2.5
+inverter_ro,1-246,PV6 current,pv6_current,31045,1,RO,S16,100,A,NEW V2.5
+inverter_ro,1-246,PV7 voltage,pv7_voltage,31046,1,RO,S16,10,V,NEW V2.5
+inverter_ro,1-246,PV7 current,pv7_current,31047,1,RO,S16,100,A,NEW V2.5
+inverter_ro,1-246,PV8 voltage,pv8_voltage,31048,1,RO,S16,10,V,NEW V2.5
+inverter_ro,1-246,PV8 current,pv8_current,31049,1,RO,S16,100,A,NEW V2.5
+inverter_ro,1-246,PV9 voltage,pv9_voltage,31050,1,RO,S16,10,V,NEW V2.5
+inverter_ro,1-246,PV9 current,pv9_current,31051,1,RO,S16,100,A,NEW V2.5
+inverter_ro,1-246,PV10 voltage,pv10_voltage,31052,1,RO,S16,10,V,NEW V2.5
+inverter_ro,1-246,PV10 current,pv10_current,31053,1,RO,S16,100,A,NEW V2.5
+inverter_ro,1-246,PV11 voltage,pv11_voltage,31054,1,RO,S16,10,V,NEW V2.5
+inverter_ro,1-246,PV11 current,pv11_current,31055,1,RO,S16,100,A,NEW V2.5
+inverter_ro,1-246,PV12 voltage,pv12_voltage,31056,1,RO,S16,10,V,NEW V2.5
+inverter_ro,1-246,PV12 current,pv12_current,31057,1,RO,S16,100,A,NEW V2.5
+inverter_ro,1-246,PV13 voltage,pv13_voltage,31058,1,RO,S16,10,V,NEW V2.5
+inverter_ro,1-246,PV13 current,pv13_current,31059,1,RO,S16,100,A,NEW V2.5
+inverter_ro,1-246,PV14 voltage,pv14_voltage,31060,1,RO,S16,10,V,NEW V2.5
+inverter_ro,1-246,PV14 current,pv14_current,31061,1,RO,S16,100,A,NEW V2.5
+inverter_ro,1-246,PV15 voltage,pv15_voltage,31062,1,RO,S16,10,V,NEW V2.5
+inverter_ro,1-246,PV15 current,pv15_current,31063,1,RO,S16,100,A,NEW V2.5
+inverter_ro,1-246,PV16 voltage,pv16_voltage,31064,1,RO,S16,10,V,NEW V2.5
+inverter_ro,1-246,PV16 current,pv16_current,31065,1,RO,S16,100,A,NEW V2.5
+inverter_ro,1-246,DC charger vehicle battery voltage,dc_charger_vehicle_battery_voltage,31500,1,RO,U16,10,V,
+inverter_ro,1-246,DC charger charging current,dc_charger_charging_current,31501,1,RO,U16,10,A,
+inverter_ro,1-246,DC charger output power,dc_charger_output_power,31502,2,RO,S32,1000,kW,
+inverter_ro,1-246,DC charger vehicle SOC,dc_charger_vehicle_soc,31504,1,RO,U16,10,%,
+inverter_ro,1-246,DC charger current charging capacity,dc_charger_current_charging_capacity,31505,2,RO,U32,100,kWh,Single session
+inverter_ro,1-246,DC charger current charging duration,dc_charger_current_charging_duration,31507,2,RO,U32,1,s,Single session
+inverter_rw,1-246,Start/Stop,start_stop,40500,1,WO,U16,,,0 stop; 1 start
+inverter_rw,1-246,Grid code,grid_code,40501,1,RW,U16,,,
+inverter_rw,1-246,DC charger Start/Stop,dc_charger_start_stop,41000,1,WO,U16,,,Document says 0=start; 1=stop
+inverter_rw,1-246,Remote EMS dispatch enable,remote_ems_dispatch_enable,41500,1,RW,U16,,,NEW V2.5 - 0 disabled; 1 enabled. When enabled inverter only obeys 41501-41507
+inverter_rw,1-246,Active power fixed value adjustment,active_power_fixed_adjustment,41501,2,RW,S32,1000,kW,NEW V2.5 - per-inverter dispatch
+inverter_rw,1-246,Reactive power fixed value adjustment,reactive_power_fixed_adjustment,41503,2,RW,S32,1000,kvar,NEW V2.5 - per-inverter dispatch
+inverter_rw,1-246,Active power percentage adjustment,active_power_percentage_adjustment,41505,1,RW,S16,100,%,NEW V2.5 - per-inverter dispatch
+inverter_rw,1-246,Reactive power Q/S adjustment,reactive_power_q_s_adjustment,41506,1,RW,S16,100,%,NEW V2.5 - per-inverter dispatch
+inverter_rw,1-246,Power factor adjustment,power_factor_adjustment,41507,1,RW,S16,1000,,NEW V2.5 - per-inverter dispatch
+accharger_ro,1-246,AC-Charger system state,ac_charger_system_state,32000,1,RO,U16,,,NEW V2.5 (EVAC only) - Appendix 7 IEC 61851-1 states
+accharger_ro,1-246,AC-Charger total energy consumed,ac_charger_total_energy_consumed,32001,2,RO,U32,100,kWh,NEW V2.5 (EVAC only)
+accharger_ro,1-246,AC-Charger charging power,ac_charger_charging_power,32003,2,RO,S32,1000,kW,NEW V2.5 (EVAC only)
+accharger_ro,1-246,AC-Charger rated power,ac_charger_rated_power,32005,2,RO,U32,1000,kW,NEW V2.5 (EVAC only)
+accharger_ro,1-246,AC-Charger rated current,ac_charger_rated_current,32007,2,RO,S32,100,A,NEW V2.5 (EVAC only)
+accharger_ro,1-246,AC-Charger rated voltage,ac_charger_rated_voltage,32009,1,RO,U16,10,V,NEW V2.5 (EVAC only)
+accharger_ro,1-246,AC-Charger input breaker rated current,ac_charger_input_breaker_rated_current,32010,2,RO,S32,100,A,NEW V2.5 (EVAC only)
+accharger_ro,1-246,AC-Charger alarm 1,ac_charger_alarm_1,32012,1,RO,U16,,,NEW V2.5 (EVAC only) - Appendix 8
+accharger_ro,1-246,AC-Charger alarm 2,ac_charger_alarm_2,32013,1,RO,U16,,,NEW V2.5 (EVAC only) - Appendix 9
+accharger_ro,1-246,AC-Charger alarm 3,ac_charger_alarm_3,32014,1,RO,U16,,,NEW V2.5 (EVAC only) - Appendix 10
+accharger_rw,1-246,AC-Charger Start/Stop,ac_charger_start_stop,42000,1,WO,U16,,,NEW V2.5 (EVAC only) - 0 start; 1 stop
+accharger_rw,1-246,AC-Charger output current,ac_charger_output_current,42001,2,RW,U32,100,,"NEW V2.5 (EVAC only) - range [6, min(rated,breaker)]"

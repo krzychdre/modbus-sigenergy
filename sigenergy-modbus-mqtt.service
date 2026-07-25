@@ -1,0 +1,18 @@
+[Unit]
+Description=Sigenergy Modbus to MQTT bridge
+After=network-online.target mosquitto.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sigenergy
+Group=sigenergy
+WorkingDirectory=/opt/sigenergy-modbus-mqtt
+ExecStart=/opt/sigenergy-modbus-mqtt/.venv/bin/python /opt/sigenergy-modbus-mqtt/sigenergy_modbus_mqtt.py -c /etc/sigenergy-modbus-mqtt.yaml
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

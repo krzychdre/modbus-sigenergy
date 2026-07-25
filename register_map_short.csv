@@ -1,0 +1,30 @@
+address,comment,count,gain,key,name,type,unit,unit_id
+30005,>0 import; <0 export,2,1000,grid_power_kw,Grid import/export power,S32,kW,247
+30014,,1,10,battery_soc_pct,Plant battery SOC,U16,%,247
+30031,,2,1000,plant_power_kw,Plant active power,S32,kW,247
+30035,,2,1000,pv_power_kw,PV power,S32,kW,247
+30037,<0 discharging; >0 charging,2,1000,battery_power_kw,ESS power,S32,kW,247
+30051,,1,1,plant_state,Plant running state,U16,,247
+30083,NEW V2.5 total plant battery capacity,2,100,ess_rated_capacity_kwh,ESS rated energy capacity,U32,kWh,247
+30085,NEW V2.5 upper SOC limit,1,10,ess_charge_cutoff_soc_pct,ESS charge cut-off SOC,U16,%,247
+30086,NEW V2.5 lower SOC limit/reserve,1,10,ess_discharge_cutoff_soc_pct,ESS discharge cut-off SOC,U16,%,247
+30087,NEW V2.5 capacity-weighted plant SOH,1,10,ess_soh_pct,ESS SOH,U16,%,247
+30587,,2,1000,inverter_active_power_kw,Inverter active power,S32,kW,1
+30599,,2,1000,inverter_battery_power_kw,Inverter ESS power,S32,kW,1
+30601,,1,10,inverter_battery_soc_pct,Inverter ESS SOC,U16,%,1
+30602,,1,10,inverter_battery_soh_pct,Inverter ESS SOH,U16,%,1
+30603,,1,10,inverter_avg_cell_temp_c,ESS average cell temperature,S16,°C,1
+30620,NEW V2.5 hottest cell,1,10,inverter_max_cell_temp_c,ESS max battery cluster temperature,S16,°C,1
+30621,NEW V2.5 coldest cell,1,10,inverter_min_cell_temp_c,ESS min battery cluster temperature,S16,°C,1
+30622,NEW V2.5 highest cell voltage,1,1000,inverter_max_cell_voltage_v,ESS max battery cell voltage,U16,V,1
+30623,NEW V2.5 lowest cell voltage,1,1000,inverter_min_cell_voltage_v,ESS min battery cell voltage,U16,V,1
+31002,,1,100,grid_frequency_hz,Grid frequency,U16,Hz,1
+31003,,1,10,pcs_temperature_c,PCS temperature,S16,°C,1
+31011,,2,100,phase_a_voltage_v,Phase A voltage,U32,V,1
+31013,,2,100,phase_b_voltage_v,Phase B voltage,U32,V,1
+31015,,2,100,phase_c_voltage_v,Phase C voltage,U32,V,1
+31027,,1,10,pv1_voltage_v,PV1 voltage,S16,V,1
+31028,,1,100,pv1_current_a,PV1 current,S16,A,1
+31029,,1,10,pv2_voltage_v,PV2 voltage,S16,V,1
+31030,,1,100,pv2_current_a,PV2 current,S16,A,1
+31035,,2,1000,inverter_pv_power_kw,Inverter PV power,S32,kW,1

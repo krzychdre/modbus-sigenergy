@@ -1,0 +1,745 @@
+modbus:
+  host: 192.168.0.10
+  port: 502
+  timeout_seconds: 3
+  read_function: input
+  address_offset: 0
+  inverter_unit_id: 1
+  plant_unit_id: 247
+mqtt:
+  host: mqtt.example.com
+  port: 8883
+  username: iot
+  password: "CHANGE_ME"
+  tls:
+    enabled: true
+    ca_cert: /etc/sigenergy-modbus-mqtt/mqttca.crt
+    insecure: true
+  client_id: sigenergy-modbus-mqtt
+  topic: sigenergy/status
+  qos: 1
+  retain: true
+  connect_timeout_seconds: 10
+  publish_timeout_seconds: 10
+  reconnect_max_delay_seconds: 60
+polling:
+  fast:
+    interval_seconds: 3
+    registers:
+    - path: plant.ems.mode
+      unit_id: 247
+      address: 30003
+      count: 1
+      type: U16
+      enum:
+        '0': maximum_self_consumption
+        '1': sigen_ai
+        '2': time_of_use
+        '7': remote_ems
+    - path: plant.grid_sensor.status
+      unit_id: 247
+      address: 30004
+      count: 1
+      type: U16
+      enum:
+        '0': not_connected
+        '1': connected
+    - path: plant.grid_sensor.active_power_kw
+      unit_id: 247
+      address: 30005
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: plant.grid_sensor.reactive_power_kvar
+      unit_id: 247
+      address: 30007
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: plant.grid_connection.mode
+      unit_id: 247
+      address: 30009
+      count: 1
+      type: U16
+      enum:
+        '0': on_grid
+        '1': off_grid_automatic
+        '2': off_grid_manual
+    - path: plant.ess.soc_pct
+      unit_id: 247
+      address: 30014
+      count: 1
+      type: U16
+      gain: 10.0
+    - path: plant.power.phase_a.active_kw
+      unit_id: 247
+      address: 30015
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: plant.power.phase_b.active_kw
+      unit_id: 247
+      address: 30017
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: plant.power.phase_c.active_kw
+      unit_id: 247
+      address: 30019
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: plant.power.phase_a.reactive_kvar
+      unit_id: 247
+      address: 30021
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: plant.power.phase_b.reactive_kvar
+      unit_id: 247
+      address: 30023
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: plant.power.phase_c.reactive_kvar
+      unit_id: 247
+      address: 30025
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: plant.alarms.word_1
+      unit_id: 247
+      address: 30027
+      count: 1
+      type: U16
+    - path: plant.alarms.word_2
+      unit_id: 247
+      address: 30028
+      count: 1
+      type: U16
+    - path: plant.alarms.word_3
+      unit_id: 247
+      address: 30029
+      count: 1
+      type: U16
+    - path: plant.alarms.word_4
+      unit_id: 247
+      address: 30030
+      count: 1
+      type: U16
+    - path: plant.power.active_kw
+      unit_id: 247
+      address: 30031
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: plant.power.reactive_kvar
+      unit_id: 247
+      address: 30033
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: plant.pv.power_kw
+      unit_id: 247
+      address: 30035
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: plant.ess.power_kw
+      unit_id: 247
+      address: 30037
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: plant.running_state
+      unit_id: 247
+      address: 30051
+      count: 1
+      type: U16
+      enum:
+        '0': standby
+        '1': running
+        '2': fault
+        '3': shutdown
+    - path: plant.grid_sensor.phase_a.active_power_kw
+      unit_id: 247
+      address: 30052
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: plant.grid_sensor.phase_b.active_power_kw
+      unit_id: 247
+      address: 30054
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: plant.grid_sensor.phase_c.active_power_kw
+      unit_id: 247
+      address: 30056
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: plant.grid_sensor.phase_a.reactive_power_kvar
+      unit_id: 247
+      address: 30058
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: plant.grid_sensor.phase_b.reactive_power_kvar
+      unit_id: 247
+      address: 30060
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: plant.grid_sensor.phase_c.reactive_power_kvar
+      unit_id: 247
+      address: 30062
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: inverter.power.active_kw
+      unit_id: 1
+      address: 30587
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: inverter.power.reactive_kvar
+      unit_id: 1
+      address: 30589
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: inverter.ess.power_kw
+      unit_id: 1
+      address: 30599
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: inverter.ess.soc_pct
+      unit_id: 1
+      address: 30601
+      count: 1
+      type: U16
+      gain: 10.0
+    - path: inverter.alarms.word_1
+      unit_id: 1
+      address: 30605
+      count: 1
+      type: U16
+    - path: inverter.alarms.word_2
+      unit_id: 1
+      address: 30606
+      count: 1
+      type: U16
+    - path: inverter.alarms.word_3
+      unit_id: 1
+      address: 30607
+      count: 1
+      type: U16
+    - path: inverter.alarms.word_4
+      unit_id: 1
+      address: 30608
+      count: 1
+      type: U16
+    - path: inverter.grid.frequency_hz
+      unit_id: 1
+      address: 31002
+      count: 1
+      type: U16
+      gain: 100.0
+    - path: inverter.temperature.pcs_internal_c
+      unit_id: 1
+      address: 31003
+      count: 1
+      type: S16
+      gain: 10.0
+    - path: inverter.grid.line_voltage.ab_v
+      unit_id: 1
+      address: 31005
+      count: 2
+      type: U32
+      gain: 100.0
+    - path: inverter.grid.line_voltage.bc_v
+      unit_id: 1
+      address: 31007
+      count: 2
+      type: U32
+      gain: 100.0
+    - path: inverter.grid.line_voltage.ca_v
+      unit_id: 1
+      address: 31009
+      count: 2
+      type: U32
+      gain: 100.0
+    - path: inverter.grid.phase_a.voltage_v
+      unit_id: 1
+      address: 31011
+      count: 2
+      type: U32
+      gain: 100.0
+    - path: inverter.grid.phase_b.voltage_v
+      unit_id: 1
+      address: 31013
+      count: 2
+      type: U32
+      gain: 100.0
+    - path: inverter.grid.phase_c.voltage_v
+      unit_id: 1
+      address: 31015
+      count: 2
+      type: U32
+      gain: 100.0
+    - path: inverter.grid.phase_a.current_a
+      unit_id: 1
+      address: 31017
+      count: 2
+      type: S32
+      gain: 100.0
+    - path: inverter.grid.phase_b.current_a
+      unit_id: 1
+      address: 31019
+      count: 2
+      type: S32
+      gain: 100.0
+    - path: inverter.grid.phase_c.current_a
+      unit_id: 1
+      address: 31021
+      count: 2
+      type: S32
+      gain: 100.0
+    - path: inverter.grid.power_factor
+      unit_id: 1
+      address: 31023
+      count: 1
+      type: U16
+      gain: 1000.0
+    - path: inverter.pv.string_1.voltage_v
+      unit_id: 1
+      address: 31027
+      count: 1
+      type: S16
+      gain: 10.0
+    - path: inverter.pv.string_1.current_a
+      unit_id: 1
+      address: 31028
+      count: 1
+      type: S16
+      gain: 100.0
+    - path: inverter.pv.string_2.voltage_v
+      unit_id: 1
+      address: 31029
+      count: 1
+      type: S16
+      gain: 10.0
+    - path: inverter.pv.string_2.current_a
+      unit_id: 1
+      address: 31030
+      count: 1
+      type: S16
+      gain: 100.0
+    - path: inverter.pv.string_3.voltage_v
+      unit_id: 1
+      address: 31031
+      count: 1
+      type: S16
+      gain: 10.0
+    - path: inverter.pv.string_3.current_a
+      unit_id: 1
+      address: 31032
+      count: 1
+      type: S16
+      gain: 100.0
+    - path: inverter.pv.string_4.voltage_v
+      unit_id: 1
+      address: 31033
+      count: 1
+      type: S16
+      gain: 10.0
+    - path: inverter.pv.string_4.current_a
+      unit_id: 1
+      address: 31034
+      count: 1
+      type: S16
+      gain: 100.0
+    - path: inverter.pv.power_kw
+      unit_id: 1
+      address: 31035
+      count: 2
+      type: S32
+      gain: 1000.0
+  slow:
+    interval_seconds: 60
+    registers:
+    - path: plant.available.active.feed_max_kw
+      unit_id: 247
+      address: 30039
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: plant.available.active.absorb_max_kw
+      unit_id: 247
+      address: 30041
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: plant.available.reactive.feed_max_kvar
+      unit_id: 247
+      address: 30043
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: plant.available.reactive.absorb_max_kvar
+      unit_id: 247
+      address: 30045
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: plant.ess.available.max_charge_power_kw
+      unit_id: 247
+      address: 30047
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: plant.ess.available.max_discharge_power_kw
+      unit_id: 247
+      address: 30049
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: plant.ess.available.charge_capacity_kwh
+      unit_id: 247
+      address: 30064
+      count: 2
+      type: U32
+      gain: 100.0
+    - path: plant.ess.available.discharge_capacity_kwh
+      unit_id: 247
+      address: 30066
+      count: 2
+      type: U32
+      gain: 100.0
+    - path: plant.energy.daily.pv_kwh
+      unit_id: 247
+      address: 30272
+      count: 2
+      type: U32
+      gain: 100.0
+    # WARNING: 30554-30562 are RESERVED in Modbus protocol V2.5 (were export/import energy in V1.7).
+    # They measured the inverter AC port, NOT the grid CT meter, and are unreliable for grid energy
+    # (grid import/export are derived by power integration instead - see energy_integration below).
+    # Kept only for backward compatibility of the MQTT topics; safe to delete if no consumer needs them.
+    - path: inverter.energy.daily.export_kwh
+      unit_id: 1
+      address: 30554
+      count: 2
+      type: U32
+      gain: 100.0
+    - path: inverter.energy.total.export_kwh
+      unit_id: 1
+      address: 30556
+      count: 4
+      type: U64
+      gain: 100.0
+    - path: inverter.energy.daily.import_kwh
+      unit_id: 1
+      address: 30560
+      count: 2
+      type: U32
+      gain: 100.0
+    - path: inverter.energy.total.import_kwh
+      unit_id: 1
+      address: 30562
+      count: 4
+      type: U64
+      gain: 100.0
+    - path: inverter.energy.daily.battery_charge_kwh
+      unit_id: 1
+      address: 30566
+      count: 2
+      type: U32
+      gain: 100.0
+    - path: inverter.energy.total.battery_charge_kwh
+      unit_id: 1
+      address: 30568
+      count: 4
+      type: U64
+      gain: 100.0
+    - path: inverter.energy.daily.battery_discharge_kwh
+      unit_id: 1
+      address: 30572
+      count: 2
+      type: U32
+      gain: 100.0
+    - path: inverter.energy.total.battery_discharge_kwh
+      unit_id: 1
+      address: 30574
+      count: 4
+      type: U64
+      gain: 100.0
+    - path: inverter.available.active_adjustment_max_kw
+      unit_id: 1
+      address: 30579
+      count: 2
+      type: S32
+      gain: 1000.0
+    - path: inverter.available.reactive_feed_max_kvar
+      unit_id: 1
+      address: 30583
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: inverter.available.reactive_absorption_max_kvar
+      unit_id: 1
+      address: 30585
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: inverter.ess.available.max_charge_power_kw
+      unit_id: 1
+      address: 30591
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: inverter.ess.available.max_discharge_power_kw
+      unit_id: 1
+      address: 30593
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: inverter.ess.available.charge_energy_kwh
+      unit_id: 1
+      address: 30595
+      count: 2
+      type: U32
+      gain: 100.0
+    - path: inverter.ess.available.discharge_energy_kwh
+      unit_id: 1
+      address: 30597
+      count: 2
+      type: U32
+      gain: 100.0
+    - path: inverter.ess.soh_pct
+      unit_id: 1
+      address: 30602
+      count: 1
+      type: U16
+      gain: 10.0
+    - path: inverter.ess.average_cell_temperature_c
+      unit_id: 1
+      address: 30603
+      count: 1
+      type: S16
+      gain: 10.0
+    - path: inverter.ess.average_cell_voltage_v
+      unit_id: 1
+      address: 30604
+      count: 1
+      type: U16
+      gain: 1000.0
+    - path: inverter.ess.max_cell_temperature_c   # NEW V2.5 (30620) - hottest cluster
+      unit_id: 1
+      address: 30620
+      count: 1
+      type: S16
+      gain: 10.0
+    - path: inverter.ess.min_cell_temperature_c   # NEW V2.5 (30621) - coldest cluster
+      unit_id: 1
+      address: 30621
+      count: 1
+      type: S16
+      gain: 10.0
+    - path: inverter.ess.max_cell_voltage_v       # NEW V2.5 (30622) - cell-balance monitoring
+      unit_id: 1
+      address: 30622
+      count: 1
+      type: U16
+      gain: 1000.0
+    - path: inverter.ess.min_cell_voltage_v       # NEW V2.5 (30623) - cell-balance monitoring
+      unit_id: 1
+      address: 30623
+      count: 1
+      type: U16
+      gain: 1000.0
+    - path: plant.ess.soh_pct                     # NEW V2.5 (30087) - capacity-weighted plant SOH
+      unit_id: 247
+      address: 30087
+      count: 1
+      type: U16
+      gain: 10.0
+    - path: inverter.pv.insulation_resistance_mohm
+      unit_id: 1
+      address: 31037
+      count: 1
+      type: U16
+      gain: 1000.0
+    - path: inverter.timestamps.startup_epoch_s
+      unit_id: 1
+      address: 31038
+      count: 2
+      type: U32
+      gain: 1.0
+    - path: inverter.timestamps.shutdown_epoch_s
+      unit_id: 1
+      address: 31040
+      count: 2
+      type: U32
+      gain: 1.0
+  static:
+    interval_seconds: 3600
+    registers:
+    - path: plant.system.epoch_s
+      unit_id: 247
+      address: 30000
+      count: 2
+      type: U32
+      gain: 1.0
+    - path: plant.system.timezone_offset_min
+      unit_id: 247
+      address: 30002
+      count: 1
+      type: S16                                   # V2.5 corrects V1.7: signed (negative UTC offsets)
+      gain: 1.0
+    - path: plant.ratings.maximum_active_power_kw
+      unit_id: 247
+      address: 30010
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: plant.ratings.maximum_apparent_power_kva
+      unit_id: 247
+      address: 30012
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: plant.ratings.ess_charge_power_kw
+      unit_id: 247
+      address: 30068
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: plant.ratings.ess_discharge_power_kw
+      unit_id: 247
+      address: 30070
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: plant.ess.rated_energy_capacity_kwh   # NEW V2.5 (30083) - total plant battery capacity
+      unit_id: 247
+      address: 30083
+      count: 2
+      type: U32
+      gain: 100.0
+    - path: plant.ess.charge_cutoff_soc_pct       # NEW V2.5 (30085) - upper SOC limit
+      unit_id: 247
+      address: 30085
+      count: 1
+      type: U16
+      gain: 10.0
+    - path: plant.ess.discharge_cutoff_soc_pct    # NEW V2.5 (30086) - lower SOC limit / reserve
+      unit_id: 247
+      address: 30086
+      count: 1
+      type: U16
+      gain: 10.0
+    - path: inverter.identity.model
+      unit_id: 1
+      address: 30500
+      count: 15
+      type: STRING
+    - path: inverter.identity.serial_number
+      unit_id: 1
+      address: 30515
+      count: 10
+      type: STRING
+    - path: inverter.identity.firmware_version
+      unit_id: 1
+      address: 30525
+      count: 15
+      type: STRING
+    - path: inverter.ratings.active_power_kw
+      unit_id: 1
+      address: 30540
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: inverter.ratings.maximum_apparent_power_kva
+      unit_id: 1
+      address: 30542
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: inverter.ratings.maximum_active_power_kw
+      unit_id: 1
+      address: 30544
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: inverter.ratings.maximum_absorption_power_kw
+      unit_id: 1
+      address: 30546
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: inverter.ratings.battery_capacity_kwh
+      unit_id: 1
+      address: 30548
+      count: 2
+      type: U32
+      gain: 100.0
+    - path: inverter.ratings.ess_charge_power_kw
+      unit_id: 1
+      address: 30550
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: inverter.ratings.ess_discharge_power_kw
+      unit_id: 1
+      address: 30552
+      count: 2
+      type: U32
+      gain: 1000.0
+    - path: inverter.ratings.grid_voltage_v
+      unit_id: 1
+      address: 31000
+      count: 1
+      type: U16
+      gain: 10.0
+    - path: inverter.ratings.grid_frequency_hz
+      unit_id: 1
+      address: 31001
+      count: 1
+      type: U16
+      gain: 100.0
+    - path: inverter.grid.output_type
+      unit_id: 1
+      address: 31004
+      count: 1
+      type: U16
+      enum:
+        '0': L_N
+        '1': L1_L2_L3
+        '2': L1_L2_L3_N
+        '3': L1_L2_N
+    - path: inverter.ess.pack_count
+      unit_id: 1
+      address: 31024
+      count: 1
+      type: U16
+      gain: 1.0
+    - path: inverter.pv.string_count
+      unit_id: 1
+      address: 31025
+      count: 1
+      type: U16
+      gain: 1.0
+    - path: inverter.pv.mppt_count
+      unit_id: 1
+      address: 31026
+      count: 1
+      type: U16
+      gain: 1.0
+energy_integration:
+  enabled: true
+  state_file: /var/lib/sigenergy-modbus-mqtt/energy_daily.json
+  timezone: Europe/Warsaw
+  max_sample_gap_seconds: 30 # cap dt so a stalled loop / restart gap doesn't inject a huge single sample
