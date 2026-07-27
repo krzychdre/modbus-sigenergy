@@ -745,5 +745,8 @@ polling:
 energy_integration:
   enabled: true
   state_file: /var/lib/sigenergy-modbus-mqtt/energy_daily.json
+  # history_file defaults to <state_file dir>/energy_history.json when omitted
+  history_file: /var/lib/sigenergy-modbus-mqtt/energy_history.json
+  history_retention_days: 1100   # keep newest N daily reports; ~3 years
   timezone: Europe/Warsaw
   max_sample_gap_seconds: 30 # cap dt so a stalled loop / restart gap doesn't inject a huge single sample
