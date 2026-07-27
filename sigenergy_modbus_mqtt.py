@@ -16,7 +16,7 @@ import struct
 import tempfile
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -253,35 +253,60 @@ class EnergyAccumulator:
         self.last_ts: float | None = None
         self.date: str | None = None
         self.totals: dict[str, float] = dict.fromkeys(self.FIELDS, 0.0)
+        # seconds of the current local day actually integrated (excludes rejected samples)
+        self.covered_seconds: float = 0.0
+        # last composed daily report for the day we are tracking (persisted so a
+        # restart across midnight can still archive the day that ended)
+        self.last_daily_report: dict[str, Any] | None = None
+        # set only by a midnight rollover: the finished day's report, awaiting archival
+        self.stale_report: dict[str, Any] | None = None
 
     def _local_date(self) -> str:
         return datetime.now(self.tz).date().isoformat()
 
+    def _local_now(self) -> datetime:
+        return datetime.now(self.tz)
+
     def _reset_totals(self) -> None:
         self.totals = dict.fromkeys(self.FIELDS, 0.0)
+        self.covered_seconds = 0.0
 
-    def load(self) -> None:
+    def load(self) -> dict[str, Any] | None:
+        """Load persisted state. Returns the stale daily report if the stored
+        date is no longer today, so the caller can archive it before the
+        accumulators reset for the new day. Returns None otherwise."""
         try:
             data = json.loads(self.state_file.read_text(encoding="utf-8"))
         except FileNotFoundError:
-            return
+            return None
         except Exception as exc:
             LOG.warning("energy state file %s unreadable (%s); starting fresh", self.state_file, exc)
-            return
+            return None
         today = self._local_date()
-        self.date = data.get("date") or today
-        if self.date != today:
-            # stored day has passed -> start the new day at zero
+        stored_date = data.get("date") or today
+        stale_report = data.get("last_daily_report")
+        if stored_date != today:
+            # stored day has passed -> start the new day at zero; hand the stale
+            # composed report back so the caller can archive it into history.
             self.date = today
             self._reset_totals()
-            LOG.info("energy state dated %s != today %s; reset accumulators", data.get("date"), today)
-            return
+            self.last_daily_report = None
+            LOG.info("energy state dated %s != today %s; reset accumulators", stored_date, today)
+            return stale_report if isinstance(stale_report, dict) else None
+        self.date = stored_date
         for f in self.FIELDS:
             try:
                 self.totals[f] = float(data.get(f, 0.0))
             except (TypeError, ValueError):
                 self.totals[f] = 0.0
+        try:
+            self.covered_seconds = float(data.get("covered_seconds", 0.0))
+        except (TypeError, ValueError):
+            self.covered_seconds = 0.0
+        if isinstance(stale_report, dict):
+            self.last_daily_report = stale_report
         LOG.info("energy state loaded for %s: %s", self.date, self.snapshot())
+        return None
 
     def update(self, pv_kw: float, grid_kw: float, ess_kw: float) -> None:
         self._start_new_day_if_needed()
@@ -296,15 +321,33 @@ class EnergyAccumulator:
         self._integrate_positive("pv_kwh", pv_kw, hours)
         # home load = pv + grid_import_signed - ess_charge_signed (clamp >= 0)
         self._integrate_positive("home_load_kwh", pv_kw + grid_kw - ess_kw, hours)
+        # coverage only counts accepted samples
+        self.covered_seconds += hours * 3600.0
 
-    def _start_new_day_if_needed(self) -> None:
+    def take_stale_report(self) -> dict[str, Any] | None:
+        """Return and clear the report of a day that has just ended. Yields a
+        value only on the cycle following a midnight rollover — on every other
+        cycle there is nothing to archive and this returns None."""
+        rep = self.stale_report
+        self.stale_report = None
+        return rep
+
+    def set_last_daily_report(self, report: dict[str, Any]) -> None:
+        """Remember the most recently composed daily report so it survives a
+        restart and can be archived on the next midnight rollover."""
+        self.last_daily_report = report
+
+    def _start_new_day_if_needed(self) -> bool:
         today = self._local_date()
         if self.date == today:
-            return
+            return False
         if self.date is not None:
             LOG.info("local date %s -> %s; resetting daily energy accumulators", self.date, today)
+        # the report we were maintaining belongs to the day that just ended
+        self.stale_report, self.last_daily_report = self.last_daily_report, None
         self.date = today
         self._reset_totals()
+        return True
 
     def _sample_hours(self) -> float | None:
         now = time.monotonic()
@@ -334,9 +377,24 @@ class EnergyAccumulator:
     def snapshot(self) -> dict[str, float]:
         return {f: round(self.totals[f], 3) for f in self.FIELDS}
 
+    def coverage(self) -> dict[str, Any]:
+        """How much of the current local day the accumulator actually integrated."""
+        now = self._local_now()
+        midnight = datetime.combine(now.date(), datetime.min.time(), tzinfo=self.tz)
+        elapsed_hours = max(0.0, (now - midnight).total_seconds() / 3600.0)
+        covered_hours = self.covered_seconds / 3600.0
+        return {
+            "covered_hours": round(covered_hours, 2),
+            "elapsed_hours": round(elapsed_hours, 2),
+            "complete": bool(covered_hours >= max(0.0, elapsed_hours - 0.25)),
+        }
+
     def persist(self) -> None:
         snap = self.snapshot()
         snap["date"] = self.date
+        snap["covered_seconds"] = self.covered_seconds
+        if self.last_daily_report is not None:
+            snap["last_daily_report"] = self.last_daily_report
         parent = self.state_file.parent
         try:
             parent.mkdir(parents=True, exist_ok=True)
@@ -358,6 +416,252 @@ class EnergyAccumulator:
                 raise
         except Exception as exc:
             LOG.warning("cannot persist energy state to %s (%s); state stays in-memory", self.state_file, exc)
+
+
+# --- daily energy report composer ---------------------------------------------
+
+# Six kWh fields every daily report carries, in a stable order.
+DAILY_KWH_FIELDS = (
+    "pv_kwh",
+    "grid_import_kwh",
+    "grid_export_kwh",
+    "home_load_kwh",
+    "battery_charge_kwh",
+    "battery_discharge_kwh",
+)
+
+
+def _num(value: Any) -> float | None:
+    """Coerce a cache value to float, or None if missing/non-numeric."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
+
+
+def _clamp_pct(value: float) -> float:
+    """Clamp a percentage to the 0..100 range."""
+    if value < 0.0:
+        return 0.0
+    if value > 100.0:
+        return 100.0
+    return value
+
+
+def compose_daily_report(cache: dict[str, Any], accumulator: EnergyAccumulator) -> dict[str, Any]:
+    """Compose the published daily energy report from the best source per field.
+
+    PV, battery charge and battery discharge use the native cache counters when
+    present and fall back to the accumulator's integrated values. Grid import
+    and grid export are always power-integrated (no native grid-CT meter).
+    Home load is derived from the daily balance so it stays consistent with the
+    native counters rather than being the integrated-since-process-start value:
+
+        home = pv - battery_charge + battery_discharge + import - export  (>= 0)
+
+    Percentages are derived from the final per-field values with the same
+    clamping rules, so they stay numerically identical between the daily report
+    and the `today` period aggregate.
+    """
+    snap = accumulator.snapshot()
+    native_pv = _num(get_path(cache, "plant.energy.daily.pv_kwh"))
+    native_bc = _num(get_path(cache, "inverter.energy.daily.battery_charge_kwh"))
+    native_bd = _num(get_path(cache, "inverter.energy.daily.battery_discharge_kwh"))
+
+    pv = native_pv if native_pv is not None else snap["pv_kwh"]
+    battery_charge = native_bc if native_bc is not None else snap["battery_charge_kwh"]
+    battery_discharge = native_bd if native_bd is not None else snap["battery_discharge_kwh"]
+    grid_import = snap["grid_import_kwh"]
+    grid_export = snap["grid_export_kwh"]
+
+    home_load = pv - battery_charge + battery_discharge + grid_import - grid_export
+    if home_load < 0.0:
+        home_load = 0.0
+
+    self_suff = 0.0 if home_load <= 0.0 else _clamp_pct((home_load - grid_import) / home_load * 100.0)
+    self_cons = 0.0 if pv <= 0.0 else _clamp_pct((pv - grid_export) / pv * 100.0)
+
+    return {
+        "date": accumulator.date,
+        "pv_kwh": round(pv, 3),
+        "grid_import_kwh": round(grid_import, 3),
+        "grid_export_kwh": round(grid_export, 3),
+        "home_load_kwh": round(home_load, 3),
+        "battery_charge_kwh": round(battery_charge, 3),
+        "battery_discharge_kwh": round(battery_discharge, 3),
+        "self_sufficiency_pct": round(self_suff, 2),
+        "self_consumption_pct": round(self_cons, 2),
+        "coverage": accumulator.coverage(),
+    }
+
+
+# Period registry: name -> window length in days counting back from today
+# inclusive, or None for "all history". Add a line here to publish a new period.
+PERIODS: dict[str, int | None] = {
+    "today": 1,
+    "week": 7,
+    "month": 30,
+    "year": 365,
+    "total": None,
+}
+
+
+def aggregate_periods(
+    today_report: dict[str, Any],
+    history: list[dict[str, Any]],
+    today_date: str,
+) -> dict[str, Any]:
+    """Build the `plant.energy.periods` subtree from today's live report plus
+    archived history days. `PERIODS` defines each window's length in days
+    counting back from today inclusive; `None` means all history.
+    """
+    # Today is contributed by the live report, never by the archive — a record
+    # for today may still be present there after an out-of-order archive, and
+    # counting it twice would inflate every window.
+    past = [rec for rec in history if str(rec.get("date")) < today_date]
+    periods: dict[str, Any] = {}
+    for key, window_days in PERIODS.items():
+        window_days_int = None if window_days is None else int(window_days)
+        if window_days_int is None:
+            window_records = list(past)
+        else:
+            cutoff = _date_minus_days(today_date, window_days_int - 1)
+            window_records = [rec for rec in past if str(rec.get("date")) >= cutoff]
+        # today's live report always counts for the "to" edge of every window
+        records: list[dict[str, Any]] = window_records + [today_report]
+        summed = {f: 0.0 for f in DAILY_KWH_FIELDS}
+        complete_days = 0
+        for rec in records:
+            for f in DAILY_KWH_FIELDS:
+                v = _num(rec.get(f))
+                if v is not None:
+                    summed[f] += v
+            cov = rec.get("coverage") or {}
+            if isinstance(cov, dict) and cov.get("complete") is True:
+                complete_days += 1
+
+        pv = summed["pv_kwh"]
+        grid_import = summed["grid_import_kwh"]
+        grid_export = summed["grid_export_kwh"]
+        home_load = summed["home_load_kwh"]
+        battery_charge = summed["battery_charge_kwh"]
+        battery_discharge = summed["battery_discharge_kwh"]
+
+        self_suff = 0.0 if home_load <= 0.0 else _clamp_pct((home_load - grid_import) / home_load * 100.0)
+        self_cons = 0.0 if pv <= 0.0 else _clamp_pct((pv - grid_export) / pv * 100.0)
+
+        from_date = today_date
+        to_date = today_date
+        if records:
+            dates = sorted(r.get("date") for r in records if isinstance(r.get("date"), str))
+            if dates:
+                from_date = dates[0]
+                to_date = dates[-1]
+
+        periods[key] = {
+            "window_days": window_days_int,
+            "from": from_date,
+            "to": to_date,
+            "days": len(records),
+            "complete_days": complete_days,
+            "pv_kwh": round(pv, 3),
+            "grid_import_kwh": round(grid_import, 3),
+            "grid_export_kwh": round(grid_export, 3),
+            "home_load_kwh": round(home_load, 3),
+            "battery_charge_kwh": round(battery_charge, 3),
+            "battery_discharge_kwh": round(battery_discharge, 3),
+            "self_sufficiency_pct": round(self_suff, 2),
+            "self_consumption_pct": round(self_cons, 2),
+        }
+    return periods
+
+
+def _date_minus_days(today_iso: str, days: int) -> str:
+    """Return the ISO date `days` days before today_iso (inclusive window start)."""
+    try:
+        d = date.fromisoformat(today_iso)
+    except ValueError:
+        return today_iso
+    return (d - timedelta(days=days)).isoformat()
+
+
+# --- daily history store ------------------------------------------------------
+
+class DailyHistoryStore:
+    """Persists finished daily reports to a JSON file, trimmed to a retention
+    limit. Failures are logged and swallowed so a history problem can never
+    kill the polling cycle."""
+
+    def __init__(self, history_file: str, retention_days: int) -> None:
+        self.history_file = Path(history_file)
+        self.retention_days = max(1, int(retention_days))
+        self._cache: list[dict[str, Any]] | None = None
+
+    def load(self) -> list[dict[str, Any]]:
+        """Load history days sorted by date ascending. Cached so repeated reads
+        during a single cycle don't re-read the file."""
+        if self._cache is not None:
+            return self._cache
+        try:
+            data = json.loads(self.history_file.read_text(encoding="utf-8"))
+            days = data.get("days") if isinstance(data, dict) else None
+            if not isinstance(days, list):
+                self._cache = []
+                return self._cache
+            cleaned: list[dict[str, Any]] = []
+            for entry in days:
+                if isinstance(entry, dict) and isinstance(entry.get("date"), str):
+                    cleaned.append(entry)
+            cleaned.sort(key=lambda r: str(r.get("date")))
+            self._cache = cleaned
+            return self._cache
+        except FileNotFoundError:
+            self._cache = []
+            return self._cache
+        except Exception as exc:
+            LOG.warning("history file %s unreadable (%s); starting with empty history", self.history_file, exc)
+            self._cache = []
+            return self._cache
+
+    def archive(self, daily_report: dict[str, Any]) -> None:
+        """Append a finished daily report, deduping by date (newest wins), then
+        trim to retention and persist atomically."""
+        if not isinstance(daily_report, dict) or not isinstance(daily_report.get("date"), str):
+            return
+        days = list(self.load())
+        new_date = daily_report["date"]
+        days = [d for d in days if d.get("date") != new_date]
+        days.append(daily_report)
+        days.sort(key=lambda r: str(r.get("date")))
+        # trim to the newest retention_days entries
+        if len(days) > self.retention_days:
+            days = days[-self.retention_days:]
+        self._cache = days
+        self._persist(days)
+
+    def _persist(self, days: list[dict[str, Any]]) -> None:
+        parent = self.history_file.parent
+        try:
+            parent.mkdir(parents=True, exist_ok=True)
+        except Exception as exc:
+            LOG.warning("cannot create history dir %s (%s); history stays in-memory", parent, exc)
+            return
+        try:
+            fd, tmp = tempfile.mkstemp(dir=str(parent), prefix=".energy_history.", suffix=".tmp")
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                    json.dump({"days": days}, fh, ensure_ascii=False, separators=(",", ":"))
+                    fh.write("\n")
+                os.replace(tmp, self.history_file)
+            except Exception:
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass
+                raise
+        except Exception as exc:
+            LOG.warning("cannot persist history to %s (%s); history stays in-memory", self.history_file, exc)
 
 
 # --- polling tiers ------------------------------------------------------------
@@ -464,25 +768,61 @@ def build_offline_payload(
 
 # --- energy integration step --------------------------------------------------
 
-def integrate_energy(cache: dict[str, Any], accumulator: EnergyAccumulator) -> None:
-    """Power-integration step run each cycle when accumulator is enabled."""
+def integrate_energy(
+    cache: dict[str, Any],
+    accumulator: EnergyAccumulator,
+    history: DailyHistoryStore,
+) -> None:
+    """Power-integration + daily-report publishing step run each cycle when the
+    accumulator is enabled. Composes the daily report from the best source per
+    field, publishes it together with the coverage metadata and period
+    aggregates, and persists the accumulator state."""
     pv_kw = get_path(cache, "plant.pv.power_kw")
     grid_kw = get_path(cache, "plant.grid_sensor.active_power_kw")
     ess_kw = get_path(cache, "plant.ess.power_kw")
     if not all(isinstance(v, (int, float)) for v in (pv_kw, grid_kw, ess_kw)):
         return
     accumulator.update(float(pv_kw), float(grid_kw), float(ess_kw))
+
+    # Only non-None on the cycle right after a midnight rollover: archive the
+    # finished day before composing the new day's report.
+    stale = accumulator.take_stale_report()
+    if stale is not None:
+        try:
+            history.archive(stale)
+        except Exception as exc:
+            LOG.warning("history archive of stale day failed: %s", exc)
+
+    daily = compose_daily_report(cache, accumulator)
+    accumulator.set_last_daily_report(daily)
+
+    # Publish the composed daily report (native-first, balance-derived home load).
+    put_path(cache, "plant.energy.daily.pv_kwh", daily["pv_kwh"])
+    put_path(cache, "plant.energy.daily.grid_import_kwh", daily["grid_import_kwh"])
+    put_path(cache, "plant.energy.daily.grid_export_kwh", daily["grid_export_kwh"])
+    put_path(cache, "plant.energy.daily.home_load_kwh", daily["home_load_kwh"])
+    put_path(cache, "plant.energy.daily.battery_charge_kwh", daily["battery_charge_kwh"])
+    put_path(cache, "plant.energy.daily.battery_discharge_kwh", daily["battery_discharge_kwh"])
+    put_path(cache, "plant.energy.daily.self_sufficiency_pct", daily["self_sufficiency_pct"])
+    put_path(cache, "plant.energy.daily.self_consumption_pct", daily["self_consumption_pct"])
+    put_path(cache, "plant.energy.daily.date", daily["date"])
+    put_path(cache, "plant.energy.daily.coverage", daily["coverage"])
+
+    # Period aggregates: today's live report plus archived history.
+    try:
+        history_days = history.load()
+    except Exception as exc:
+        LOG.warning("history load failed (%s); aggregating today only", exc)
+        history_days = []
+    try:
+        periods = aggregate_periods(daily, history_days, daily["date"])
+    except Exception as exc:
+        LOG.warning("period aggregation failed: %s", exc)
+        periods = {}
+    put_path(cache, "plant.energy.periods", periods)
+
+    # Cross-check block: integrated values for all six flows, kept unchanged.
     snap = accumulator.snapshot()
-    # consolidated 6-flow daily Sankey (native where available, integrated for grid/home)
-    put_path(cache, "plant.energy.daily.grid_import_kwh", snap["grid_import_kwh"])
-    put_path(cache, "plant.energy.daily.grid_export_kwh", snap["grid_export_kwh"])
-    put_path(cache, "plant.energy.daily.home_load_kwh", snap["home_load_kwh"])
-    bc = get_path(cache, "inverter.energy.daily.battery_charge_kwh")
-    bd = get_path(cache, "inverter.energy.daily.battery_discharge_kwh")
-    if isinstance(bc, (int, float)):
-        put_path(cache, "plant.energy.daily.battery_charge_kwh", round(float(bc), 3))
-    if isinstance(bd, (int, float)):
-        put_path(cache, "plant.energy.daily.battery_discharge_kwh", round(float(bd), 3))
     put_path(cache, "plant.energy.daily.integrated", {
         "pv_kwh": snap["pv_kwh"],
         "grid_import_kwh": snap["grid_import_kwh"],
@@ -515,17 +855,32 @@ class Application:
         signal.signal(signal.SIGINT, handler)
         signal.signal(signal.SIGTERM, handler)
 
-    def _build_accumulator(self) -> EnergyAccumulator | None:
+    def _build_energy_integration(self) -> tuple[EnergyAccumulator | None, DailyHistoryStore | None]:
+        """Build the accumulator + history store, or (None, None) if disabled.
+        On load, if the accumulator's persisted state belongs to a previous day,
+        the stale daily report is archived into history before the accumulators
+        reset for the new day."""
         ei = self.cfg.get("energy_integration") or {}
         if not ei.get("enabled"):
-            return None
+            return None, None
+        tz_name = ei.get("timezone", "Europe/Warsaw")
+        state_file = ei.get("state_file", "/var/lib/sigenergy-modbus-mqtt/energy_daily.json")
+        default_history = str(Path(state_file).parent / "energy_history.json")
+        history_file = ei.get("history_file", default_history)
+        retention_days = int(ei.get("history_retention_days", 1100))
         accumulator = EnergyAccumulator(
-            state_file=ei.get("state_file", "/var/lib/sigenergy-modbus-mqtt/energy_daily.json"),
-            tz_name=ei.get("timezone", "Europe/Warsaw"),
+            state_file=state_file,
+            tz_name=tz_name,
             max_gap_s=ei.get("max_sample_gap_seconds", 30),
         )
-        accumulator.load()
-        return accumulator
+        history = DailyHistoryStore(history_file, retention_days)
+        stale = accumulator.load()
+        if stale is not None:
+            try:
+                history.archive(stale)
+            except Exception as exc:
+                LOG.warning("history archive of stale day on load failed: %s", exc)
+        return accumulator, history
 
     def run(self) -> int:
         self.publisher = MqttPublisher(self.mc)
@@ -537,7 +892,7 @@ class Application:
         )
         self.reader = RegisterReader(self.modbus, self.mb)
         self.poller = TierPoller(self.tiers, self.reader)
-        self.accumulator = self._build_accumulator()
+        self.accumulator, self.history = self._build_energy_integration()
         self._install_signal_handlers()
 
         try:
@@ -570,8 +925,8 @@ class Application:
             self.mb, self.started_at, self.poller.tier_updated, age,
             self.poller.cache, self.poller.errors,
         )
-        if self.accumulator is not None:
-            integrate_energy(self.poller.cache, self.accumulator)
+        if self.accumulator is not None and self.history is not None:
+            integrate_energy(self.poller.cache, self.accumulator, self.history)
         self.publisher.publish(payload)
         LOG.info(
             "Published consolidated snapshot to %s: %d errors",
