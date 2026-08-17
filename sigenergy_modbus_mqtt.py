@@ -24,7 +24,7 @@ from zoneinfo import ZoneInfo
 import paho.mqtt.client as mqtt
 import yaml
 from pymodbus.client import ModbusTcpClient
-from pymodbus.exceptions import ModbusException
+from pymodbus.exceptions import ConnectionException, ModbusException
 
 LOG = logging.getLogger("sigenergy-modbus-mqtt")
 
@@ -385,9 +385,13 @@ class TierPoller:
         return now - last >= float(tier["interval_seconds"])
 
     def _refresh_tier(self, tier_name: str, tier: dict[str, Any], now: float) -> None:
-        success = sum(self._read_register(reg) for reg in self._enabled_registers(tier))
-        self.tier_last[tier_name] = now
-        self.tier_updated[tier_name] = utc_now()
+        registers = self._enabled_registers(tier)
+        success = sum(self._read_register(reg) for reg in registers)
+        if success or not registers:
+            # stamp freshness only when something was actually read, so
+            # age_seconds keeps growing honestly while every read fails
+            self.tier_last[tier_name] = now
+            self.tier_updated[tier_name] = utc_now()
         LOG.info("Refreshed %s tier: %d values", tier_name, success)
 
     @staticmethod
@@ -400,6 +404,11 @@ class TierPoller:
             put_path(self.cache, path, self.reader.read(reg))
             self.errors.pop(path, None)
             return True
+        except (OSError, ConnectionException) as exc:
+            # dead/half-open socket: propagate so the cycle handler resets the
+            # Modbus connection (a broken pipe never heals within this connection)
+            self.errors[path] = str(exc)
+            raise
         except Exception as exc:
             self.errors[path] = str(exc)
             LOG.warning("%s: %s", path, exc)
@@ -464,11 +473,22 @@ def build_offline_payload(
 
 # --- energy integration step --------------------------------------------------
 
-def integrate_energy(cache: dict[str, Any], accumulator: EnergyAccumulator) -> None:
+POWER_INTEGRATION_PATHS = (
+    "plant.pv.power_kw",
+    "plant.grid_sensor.active_power_kw",
+    "plant.ess.power_kw",
+)
+
+
+def integrate_energy(
+    cache: dict[str, Any], accumulator: EnergyAccumulator, errors: dict[str, str]
+) -> None:
     """Power-integration step run each cycle when accumulator is enabled."""
-    pv_kw = get_path(cache, "plant.pv.power_kw")
-    grid_kw = get_path(cache, "plant.grid_sensor.active_power_kw")
-    ess_kw = get_path(cache, "plant.ess.power_kw")
+    if any(path in errors for path in POWER_INTEGRATION_PATHS):
+        # stale cached powers must not be integrated; max_gap_s drops the
+        # first oversized sample once reads recover, so nothing is backfilled
+        return
+    pv_kw, grid_kw, ess_kw = (get_path(cache, p) for p in POWER_INTEGRATION_PATHS)
     if not all(isinstance(v, (int, float)) for v in (pv_kw, grid_kw, ess_kw)):
         return
     accumulator.update(float(pv_kw), float(grid_kw), float(ess_kw))
@@ -571,7 +591,7 @@ class Application:
             self.poller.cache, self.poller.errors,
         )
         if self.accumulator is not None:
-            integrate_energy(self.poller.cache, self.accumulator)
+            integrate_energy(self.poller.cache, self.accumulator, self.poller.errors)
         self.publisher.publish(payload)
         LOG.info(
             "Published consolidated snapshot to %s: %d errors",
